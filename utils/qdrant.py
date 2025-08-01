@@ -65,6 +65,7 @@ class QdrantVectorOutput(DynamicSink):
 def build_qdrant_client(url: Optional[str] = None, api_key: Optional[str] = None):
     """
     Builds a QdrantClient object with the given URL and API key.
+    Falls back to in-memory mode if connection fails.
 
     Args:
         url (Optional[str]): The URL of the Qdrant server. If not provided,
@@ -72,32 +73,36 @@ def build_qdrant_client(url: Optional[str] = None, api_key: Optional[str] = None
         api_key (Optional[str]): The API key to use for authentication. If not provided,
             it will be read from the QDRANT_API_KEY environment variable.
 
-    Raises:
-        KeyError: If the QDRANT_URL or QDRANT_API_KEY environment variables are not set
-            and no values are provided as arguments.
-
     Returns:
-        QdrantClient: A QdrantClient object connected to the specified Qdrant server.
+        QdrantClient: A QdrantClient object connected to the specified Qdrant server
+                     or in-memory client as fallback.
     """
 
-    client_kwargs = {}
+    # Try to connect to configured Qdrant server
     if url is None:
-        try:
-            url = os.environ["QDRANT_URL"]
-        except KeyError:
-            raise KeyError(
-                "QDRANT_URL must be set as environment variable or manually passed as an argument."
-            )
-    client_kwargs["url"] = url
-
+        url = os.environ.get("QDRANT_URL", "localhost:6333")
+    
     if api_key is None:
         api_key = os.environ.get("QDRANT_API_KEY")
+    
+    # Build client kwargs
+    client_kwargs = {"url": url}
     if api_key:
-        client_kwargs["url"] = url
+        client_kwargs["api_key"] = api_key
 
-    client = QdrantClient(**client_kwargs)
-
-    return client
+    try:
+        # Try to connect to the configured server
+        client = QdrantClient(**client_kwargs)
+        # Test the connection
+        client.get_collections()
+        print(f"✅ Connected to Qdrant at {url}")
+        return client
+    except Exception as e:
+        print(f"⚠️  Failed to connect to Qdrant at {url}: {e}")
+        print("🔄 Falling back to in-memory Qdrant client")
+        # Fallback to in-memory client
+        client = QdrantClient(":memory:")
+        return client
 
 
 class QdrantVectorSink(StatelessSinkPartition):
