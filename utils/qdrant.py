@@ -124,21 +124,37 @@ class QdrantVectorSink(StatelessSinkPartition):
         self._collection_name = collection_name
 
     def write_batch(self, chunks: list[EmbeddedChunkedPost]):
+        print(f"💾 QdrantVectorSink: Writing batch of {len(chunks)} chunks...")
+        
         ids = []
         embeddings = []
         metadata = []
-        for chunk in chunks:
-            chunk_id, text_embedding, chunk_metadata = chunk.to_payload()
+        for i, chunk in enumerate(chunks):
+            try:
+                chunk_id, text_embedding, chunk_metadata = chunk.to_payload()
+                ids.append(chunk_id)
+                embeddings.append(text_embedding)
+                metadata.append(chunk_metadata)
+                
+                if i < 3:  # Show first few for debugging
+                    print(f"  📝 Chunk {i+1}: {chunk.post_id} → {len(text_embedding)} dims")
+                    
+            except Exception as e:
+                print(f"❌ Error processing chunk {i}: {e}")
+                continue
 
-            ids.append(chunk_id)
-            embeddings.append(text_embedding)
-            metadata.append(chunk_metadata)
-
-        self._client.upsert(
-            collection_name=self._collection_name,
-            points=Batch(
-                ids=ids,
-                vectors=embeddings,
-                payloads=metadata,
-            ),
-        )
+        try:
+            print(f"🔄 Upserting {len(ids)} points to collection '{self._collection_name}'...")
+            self._client.upsert(
+                collection_name=self._collection_name,
+                points=Batch(
+                    ids=ids,
+                    vectors=embeddings,
+                    payloads=metadata,
+                ),
+            )
+            print(f"✅ Successfully upserted {len(ids)} points to Qdrant!")
+            
+        except Exception as e:
+            print(f"❌ Error upserting to Qdrant: {e}")
+            raise

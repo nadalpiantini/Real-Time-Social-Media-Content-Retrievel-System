@@ -76,7 +76,9 @@ def fetch_posts(email, password, page):
 
 
 def make_post_data(containers, username):
-    path_to_store=f"data/{username}_data.json"
+    # Import Supabase client
+    from utils.supabase_client import supabase_client
+    
     # Define a data structure to hold all the post information
     post_data = {}
     post_data["Name"] = username
@@ -92,7 +94,19 @@ def make_post_data(containers, username):
         post_text = post_text.replace('"', "")
         post_text = post_text.replace("\n", "")
         if post_text != "": # if content is not empty
-            post_data["Posts"][post_id] = {"text": post_text, "name": username, "source": "Linkedin"}
+            post_data["Posts"][post_id] = {
+                "text": post_text, 
+                "post_owner": username, 
+                "name": username, 
+                "source": "Linkedin"
+            }
 
-    with open(path_to_store, "w") as f:
-        json.dump(post_data, f, ensure_ascii=False)
+    # Save to Supabase (with JSON fallback)
+    success = supabase_client.save_scraped_data(username, post_data)
+    
+    if success:
+        print(f"✅ Successfully saved {len(post_data['Posts'])} posts for {username}")
+    else:
+        print(f"⚠️ Warning: Could not save posts for {username}")
+    
+    return post_data

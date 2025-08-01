@@ -1,6 +1,7 @@
 import streamlit as st
 import time
 import os
+import json
 
 # Core imports
 try:
@@ -78,22 +79,29 @@ def migrate_data_to_vectordb(username):
     if not CORE_MODULES_AVAILABLE:
         st.error("❌ Core modules not available for data migration")
         return
-        
-    warn = st.toast(
-        "Hold on tight! We're moving data to a new system (VectorDB) to improve performance. We'll be back soon. ",
-        icon="🚀",
-    )
     
+    # Create progress container
+    progress_container = st.container()
+    
+    with progress_container:
+        st.info("🚀 Starting data migration to VectorDB...")
+        progress_bar = st.progress(0)
+        status_text = st.empty()
+        
     if BYTEWAX_AVAILABLE:
-        # Use full Bytewax pipeline
+        # Use full Bytewax pipeline with detailed progress
         try:
             from utils.supabase_client import supabase_client
             
-            # Check if we should use Supabase or JSON files
+            status_text.text("📊 Analyzing data sources...")
+            progress_bar.progress(10)
+            
+            # Check data sources and validate
             if supabase_client.is_available():
                 # Use Supabase data source
-                flow = build_flow(in_memory=False, data_source_path=None)
                 st.info("🔄 Using Supabase data source for migration")
+                data_source_path = None
+                post_count = "unknown"
             else:
                 # Fallback to JSON files
                 if username:
@@ -104,28 +112,194 @@ def migrate_data_to_vectordb(username):
                         data_source_path = [f"data/{p}" for p in os.listdir(data_folder) if p.endswith('_data.json')]
                     else:
                         st.error("❌ No data found. Please fetch some posts first!")
-                        warn.empty()
                         return
                 
-                flow = build_flow(in_memory=False, data_source_path=data_source_path)
-                st.info(f"📁 Using {len(data_source_path)} JSON files for migration")
+                # Count posts in JSON files
+                post_count = count_posts_in_files(data_source_path)
+                if post_count == 0:
+                    st.warning("⚠️ No posts found in data files. Please check your data or fetch new posts.")
+                    return
+                    
+                # Filter out empty files
+                non_empty_files = []
+                for file_path in data_source_path:
+                    if os.path.exists(file_path):
+                        with open(file_path, 'r', encoding='utf-8') as f:
+                            data = json.load(f)
+                            if len(data.get('Posts', {})) > 0:
+                                non_empty_files.append(file_path)
+                
+                if not non_empty_files:
+                    st.warning("⚠️ All data files are empty. Please fetch some posts first.")
+                    return
+                
+                data_source_path = non_empty_files  # Use only non-empty files
+                st.info(f"📁 Using {len(data_source_path)} non-empty JSON files ({post_count} posts) for migration")
             
-            run_main(flow)
-            warn.empty()
-            warn = st.toast("We're all set! Data transfer to VectorDB is finished.", icon="🎊")
+            progress_bar.progress(20)
+            status_text.text("🧠 Loading ML models (this may take a few minutes on first run)...")
+            
+            # Pre-load models with progress feedback
+            try:
+                embedding_model = EmbeddingModelSingleton()
+                st.success("✅ Embedding model loaded successfully")
+                progress_bar.progress(40)
+                
+                cross_encoder_model = CrossEncoderModelSingleton()
+                st.success("✅ Cross-encoder model loaded successfully")
+                progress_bar.progress(60)
+                
+            except Exception as model_error:
+                st.error(f"❌ Error loading ML models: {str(model_error)}")
+                st.info("🔄 Falling back to simplified mode...")
+                migrate_data_simplified(username)
+                return
+            
+            status_text.text("🔧 Building data processing pipeline...")
+            progress_bar.progress(70)
+            
+            # Build flow
+            flow = build_flow(in_memory=False, data_source_path=data_source_path)
+            
+            status_text.text("⚡ Processing data through pipeline...")
+            progress_bar.progress(80)
+            
+            # Run pipeline with detailed logging and timeout
+            import signal
+            import threading
+            import sys
+            from io import StringIO
+            
+            # Set multiple timers for user feedback
+            def timeout_handler_30():
+                st.info("⏰ Pipeline is taking longer than expected. This is normal for first-time model downloads.")
+                
+            def timeout_handler_60():
+                st.warning("⏰ Still processing... The embedding model may be downloading (can be ~500MB).")
+                
+            def timeout_handler_120():
+                st.warning("⏰ Taking quite a while... If this persists, there might be a network issue.")
+            
+            timer_30 = threading.Timer(30.0, timeout_handler_30)
+            timer_60 = threading.Timer(60.0, timeout_handler_60)
+            timer_120 = threading.Timer(120.0, timeout_handler_120)
+            
+            timer_30.start()
+            timer_60.start()
+            timer_120.start()
+            
+            # Capture pipeline output
+            old_stdout = sys.stdout
+            old_stderr = sys.stderr
+            sys.stdout = captured_output = StringIO()
+            sys.stderr = captured_errors = StringIO()
+            
+            try:
+                st.info("🔄 Executing Bytewax pipeline...")
+                
+                # Create a status container for real-time updates
+                pipeline_status = st.empty()
+                processing_details = st.empty()
+                
+                # Show initial pipeline info
+                pipeline_status.info("🚀 Pipeline started - processing posts through ML models...")
+                
+                # Run the pipeline
+                run_main(flow)
+                
+                # Cancel all timers if successful
+                timer_30.cancel()
+                timer_60.cancel()
+                timer_120.cancel()
+                
+                # Restore output
+                sys.stdout = old_stdout
+                sys.stderr = old_stderr
+                
+                # Show captured logs
+                output = captured_output.getvalue()
+                errors = captured_errors.getvalue()
+                
+                if output:
+                    st.text_area("📋 Pipeline Output:", output, height=200)
+                    
+                if errors:
+                    st.text_area("⚠️ Pipeline Errors:", errors, height=100)
+                
+                progress_bar.progress(100)
+                status_text.text("✅ Migration completed successfully!")
+                st.success("🎊 Data transfer to VectorDB is finished!")
+                
+            except Exception as pipeline_error:
+                # Cancel all timers
+                timer_30.cancel()
+                timer_60.cancel()
+                timer_120.cancel()
+                
+                # Restore output
+                sys.stdout = old_stdout
+                sys.stderr = old_stderr
+                
+                # Show captured logs for debugging
+                output = captured_output.getvalue()
+                errors = captured_errors.getvalue()
+                
+                if output:
+                    st.text_area("📋 Pipeline Output Before Error:", output, height=150)
+                    
+                if errors:
+                    st.text_area("⚠️ Pipeline Errors:", errors, height=150)
+                
+                raise pipeline_error
+                
         except Exception as e:
-            warn.empty()
+            progress_bar.progress(0)
+            status_text.text("❌ Migration failed")
             st.error(f"❌ Error during migration: {str(e)}")
-            print(f"Migration error: {e}")
+            st.info("🔄 Trying simplified migration as fallback...")
+            
+            # Fallback to simplified migration
+            try:
+                migrate_data_simplified(username)
+                st.success("✅ Fallback migration completed!")
+            except Exception as fallback_error:
+                st.error(f"❌ Fallback migration also failed: {str(fallback_error)}")
     else:
         # Simplified migration without Bytewax
         try:
+            status_text.text("🔄 Running simplified migration...")
+            progress_bar.progress(50)
+            
             migrate_data_simplified(username)
-            warn.empty()
-            warn = st.toast("✅ Data processed successfully (simplified mode)", icon="🎊")
+            
+            progress_bar.progress(100)
+            status_text.text("✅ Simplified migration completed!")
+            st.success("✅ Data processed successfully (simplified mode)")
+            
         except Exception as e:
-            warn.empty()
+            progress_bar.progress(0)
+            status_text.text("❌ Migration failed")
             st.error(f"❌ Error during simplified migration: {str(e)}")
+
+
+def count_posts_in_files(file_paths):
+    """Count total posts in JSON files"""
+    import json
+    total_posts = 0
+    
+    for file_path in file_paths:
+        try:
+            if os.path.exists(file_path):
+                with open(file_path, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    posts = data.get('Posts', {})
+                    total_posts += len(posts)
+                    if len(posts) == 0:
+                        st.warning(f"⚠️ File {os.path.basename(file_path)} contains no posts")
+        except Exception as e:
+            st.warning(f"⚠️ Error reading {file_path}: {e}")
+    
+    return total_posts
 
 
 def migrate_data_simplified(username):
