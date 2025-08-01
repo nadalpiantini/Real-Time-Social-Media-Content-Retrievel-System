@@ -126,3 +126,100 @@ The project doesn't include a specific test framework setup. When adding tests:
 - May trigger browser automation detection
 - Respects LinkedIn's rate limits and terms of service
 - Selenium WebDriver manages browser instances automatically
+
+## 🔧 Debugging & Troubleshooting
+
+### Enhanced Data Ingestion Debugging
+The system includes comprehensive debugging for the "🛠️ Data Ingestion to VectorDB" process:
+
+#### **Progress Indicators**
+- Real-time progress bars for each stage (20%, 40%, 60%, 80%, 100%)
+- ML model loading progress (shows ~500MB download on first run)
+- Step-by-step pipeline execution tracking
+- Post counting and file validation
+
+#### **Detailed Logging**
+```
+📁 Using 1 non-empty JSON files (17 posts) for migration
+🧠 Loading ML models...
+✅ Embedding model loaded successfully
+✅ Cross-encoder model loaded successfully
+🔧 Building data processing pipeline...
+📊 Data source paths: ['data/manthanbhikadiya_data.json']
+📖 Reading file: data/manthanbhikadiya_data.json
+📊 File manthanbhikadiya_data.json: 17 posts found
+🔄 Input: Processing tuple
+🔄 Raw Post: Processing post Post_1
+🔄 Cleaned Post: Processing post Post_1
+🔄 Chunked Post: Processing post Post_1
+🔄 Embedded Post: Processing post Post_1
+🔍 Final: Post Post_1 → 380 chars → 384 dims
+💾 QdrantVectorSink: Writing batch of 18 chunks...
+✅ Successfully upserted 18 points to Qdrant!
+```
+
+#### **Timeout Handling**
+- **30s warning**: "Pipeline taking longer than expected"
+- **60s warning**: "Model may be downloading (~500MB)"
+- **120s warning**: "Possible network issue"
+
+#### **Error Capture**
+- Pipeline output and errors displayed in Streamlit UI
+- Fallback mechanisms for missing dependencies
+- Clear error messages with suggested fixes
+
+### **Common Issues & Solutions**
+
+#### **1. Data Ingestion Hanging**
+If "🛠️ Data Ingestion to VectorDB" hangs, the enhanced logging shows exactly where:
+
+**Check the logs for:**
+- **Empty Files**: System automatically filters empty JSON files
+- **Model Downloads**: First run downloads ~500MB embedding models
+- **Missing Dependencies**: See dependency installation below
+- **Qdrant Connection**: System falls back to in-memory mode automatically
+
+#### **2. Missing Dependencies Error**
+```bash
+# Install core ML dependencies
+pip install sentence-transformers==2.7.0 qdrant-client==1.9.0 bytewax pandas numpy
+
+# Fix protobuf version conflicts (required for Bytewax)
+pip install 'protobuf<4,>=3.12'
+
+# Install remaining dependencies
+pip install pydantic-settings supabase python-dotenv langchain langchain-text-splitters unstructured
+```
+
+#### **3. File Processing Issues**
+The system now shows detailed file processing:
+- **manthanbhikadiya_data.json**: 17 posts ✅
+- **nadalpiantini_data.json**: 0 posts ⚠️ (automatically filtered)
+
+#### **4. Pipeline Stage Debugging**
+Each pipeline stage is now logged:
+1. **Input**: Raw data loading from JSON files
+2. **Raw Post**: Converting to RawPost objects  
+3. **Cleaned Post**: Text cleaning and preprocessing
+4. **Chunked Post**: Text segmentation for embedding
+5. **Embedded Post**: Vector generation using ML models
+6. **VectorDB**: Storage in Qdrant database
+
+### **Performance Notes**
+- **First Run**: Downloads embedding models (~500MB) - can take 5-10 minutes
+- **Subsequent Runs**: Uses cached models - much faster
+- **Processing Speed**: ~1-2 seconds per post after models are loaded
+- **Memory Usage**: ~2GB RAM for ML models
+
+### **Dependency Requirements**
+```txt
+# Core requirements from requirements.txt
+streamlit>=1.47.0
+sentence-transformers>=2.7.0
+torch>=2.3.0
+qdrant-client>=1.9.0
+bytewax  # ⚠️ Was missing - now added
+pandas>=2.2.0
+numpy>=1.26.0
+protobuf<4,>=3.12  # ⚠️ Version critical for Bytewax
+```
