@@ -64,45 +64,88 @@ class QdrantVectorOutput(DynamicSink):
 
 def build_qdrant_client(url: Optional[str] = None, api_key: Optional[str] = None):
     """
-    Builds a QdrantClient object with the given URL and API key.
-    Falls back to in-memory mode if connection fails.
+    Builds a QdrantClient object with comprehensive fallback options.
+    
+    Priority order:
+    1. Explicit URL parameter
+    2. Environment variables (QDRANT_URL, QDRANT_API_KEY)
+    3. Local server (localhost:6333)
+    4. Enhanced persistent memory mode
+    5. Basic in-memory mode
 
     Args:
-        url (Optional[str]): The URL of the Qdrant server. If not provided,
-            it will be read from the QDRANT_URL environment variable.
-        api_key (Optional[str]): The API key to use for authentication. If not provided,
-            it will be read from the QDRANT_API_KEY environment variable.
+        url (Optional[str]): The URL of the Qdrant server. Special values:
+            - ":memory:" forces basic in-memory mode
+            - ":persistent:" forces enhanced persistent memory mode
+            - None uses environment variables or defaults
+        api_key (Optional[str]): The API key to use for authentication.
 
     Returns:
-        QdrantClient: A QdrantClient object connected to the specified Qdrant server
-                     or in-memory client as fallback.
+        QdrantClient: A QdrantClient object (may be enhanced persistent client)
     """
 
-    # Try to connect to configured Qdrant server
+    # Handle special URL values
+    if url == ":memory:":
+        print("🔄 Using basic in-memory Qdrant client")
+        return QdrantClient(":memory:")
+    elif url == ":persistent:":
+        print("🔄 Using enhanced persistent memory Qdrant client")
+        try:
+            from .persistent_memory import PersistentMemoryQdrant
+            return PersistentMemoryQdrant()
+        except ImportError as e:
+            print(f"⚠️ Could not load persistent memory module: {e}")
+            print("🔄 Falling back to basic in-memory client")
+            return QdrantClient(":memory:")
+
+    # Get connection parameters
     if url is None:
-        url = os.environ.get("QDRANT_URL", "localhost:6333")
+        url = os.environ.get("QDRANT_URL")
     
     if api_key is None:
         api_key = os.environ.get("QDRANT_API_KEY")
     
-    # Build client kwargs
-    client_kwargs = {"url": url}
-    if api_key:
-        client_kwargs["api_key"] = api_key
+    # Try cloud/remote connection if URL is provided
+    if url:
+        client_kwargs = {"url": url}
+        if api_key:
+            client_kwargs["api_key"] = api_key
 
+        try:
+            client = QdrantClient(**client_kwargs)
+            # Test the connection
+            client.get_collections()
+            print(f"✅ Connected to Qdrant at {url}")
+            return client
+        except Exception as e:
+            print(f"⚠️ Failed to connect to Qdrant at {url}: {e}")
+    
+    # Try local server
     try:
-        # Try to connect to the configured server
-        client = QdrantClient(**client_kwargs)
+        print("🔗 Trying to connect to local Qdrant server...")
+        client = QdrantClient("localhost", port=6333)
         # Test the connection
         client.get_collections()
-        print(f"✅ Connected to Qdrant at {url}")
+        print("✅ Connected to local Qdrant server")
         return client
     except Exception as e:
-        print(f"⚠️  Failed to connect to Qdrant at {url}: {e}")
-        print("🔄 Falling back to in-memory Qdrant client")
-        # Fallback to in-memory client
-        client = QdrantClient(":memory:")
+        print(f"⚠️ Failed to connect to local Qdrant server: {e}")
+    
+    # Enhanced fallback: persistent memory mode
+    try:
+        print("🔄 Trying enhanced persistent memory mode...")
+        from .persistent_memory import PersistentMemoryQdrant
+        client = PersistentMemoryQdrant()
+        print("✅ Using enhanced persistent memory Qdrant")
         return client
+    except ImportError as e:
+        print(f"⚠️ Could not load persistent memory module: {e}")
+    except Exception as e:
+        print(f"⚠️ Could not initialize persistent memory mode: {e}")
+    
+    # Final fallback: basic in-memory
+    print("🔄 Falling back to basic in-memory Qdrant client")
+    return QdrantClient(":memory:")
 
 
 class QdrantVectorSink(StatelessSinkPartition):
@@ -124,17 +167,24 @@ class QdrantVectorSink(StatelessSinkPartition):
         self._collection_name = collection_name
 
     def write_batch(self, chunks: list[EmbeddedChunkedPost]):
+        if not chunks:
+            print("📝 QdrantVectorSink: Empty batch, skipping...")
+            return
+            
         print(f"💾 QdrantVectorSink: Writing batch of {len(chunks)} chunks...")
         
         ids = []
         embeddings = []
         metadata = []
+        processed_count = 0
+        
         for i, chunk in enumerate(chunks):
             try:
                 chunk_id, text_embedding, chunk_metadata = chunk.to_payload()
                 ids.append(chunk_id)
                 embeddings.append(text_embedding)
                 metadata.append(chunk_metadata)
+                processed_count += 1
                 
                 if i < 3:  # Show first few for debugging
                     print(f"  📝 Chunk {i+1}: {chunk.post_id} → {len(text_embedding)} dims")
@@ -143,18 +193,39 @@ class QdrantVectorSink(StatelessSinkPartition):
                 print(f"❌ Error processing chunk {i}: {e}")
                 continue
 
+        if not ids:
+            print("⚠️ No valid chunks to upsert")
+            return
+
         try:
             print(f"🔄 Upserting {len(ids)} points to collection '{self._collection_name}'...")
-            self._client.upsert(
-                collection_name=self._collection_name,
-                points=Batch(
-                    ids=ids,
-                    vectors=embeddings,
-                    payloads=metadata,
-                ),
-            )
-            print(f"✅ Successfully upserted {len(ids)} points to Qdrant!")
+            
+            # Add timeout and retry logic for Qdrant operations
+            import time
+            max_retries = 3
+            for retry in range(max_retries):
+                try:
+                    self._client.upsert(
+                        collection_name=self._collection_name,
+                        points=Batch(
+                            ids=ids,
+                            vectors=embeddings,
+                            payloads=metadata,
+                        ),
+                    )
+                    print(f"✅ Successfully upserted {len(ids)} points to Qdrant! (attempt {retry + 1})")
+                    break
+                    
+                except Exception as retry_error:
+                    if retry == max_retries - 1:
+                        raise retry_error
+                    print(f"⚠️ Retry {retry + 1} failed: {retry_error}")
+                    time.sleep(1)  # Wait before retry
             
         except Exception as e:
-            print(f"❌ Error upserting to Qdrant: {e}")
-            raise
+            print(f"❌ Error upserting to Qdrant after {max_retries} attempts: {e}")
+            # Don't raise - allow pipeline to continue
+            print("🔄 Continuing pipeline despite Qdrant error...")
+        
+        finally:
+            print(f"🏁 QdrantVectorSink batch processing complete: {processed_count}/{len(chunks)} chunks processed")

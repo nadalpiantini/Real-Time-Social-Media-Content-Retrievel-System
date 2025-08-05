@@ -33,9 +33,12 @@ class RawPost(BaseModel):
     @classmethod
     def from_source(cls, k_v: Tuple[str, dict]) -> "RawPost":
         k, v = k_v
+        
+        # Handle both 'name' and 'post_owner' fields for compatibility
+        post_owner = v.get("post_owner", v.get("name", "unknown"))
 
         return cls(
-            post_id=k, post_owner=v["name"], source=v['source'], text=v["text"], image=v.get("image", None)
+            post_id=k, post_owner=post_owner, source=v['source'], text=v["text"], image=v.get("image", None)
         )
 
 

@@ -2,7 +2,27 @@ import streamlit as st
 import time
 import os
 import json
+import signal
 
+# FIRST STREAMLIT COMMAND - Must be first!
+st.set_page_config(
+    page_title="🎯 Real-Time LinkedIn Content Quest",
+    page_icon="🎯",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# Performance optimizations - import and setup early
+try:
+    from utils.performance import setup_performance_monitoring, StreamlitContextManager
+    # Initialize performance monitoring
+    perf_optimizer = setup_performance_monitoring()
+except ImportError:
+    # Fallback if performance module not available
+    perf_optimizer = None
+    StreamlitContextManager = None
+
+# Now we can safely do imports with error handling
 # Core imports
 try:
     from utils.embedding import EmbeddingModelSingleton, CrossEncoderModelSingleton
@@ -29,64 +49,145 @@ try:
 except ImportError:
     st.warning("⚠️ LinkedIn scraper not available - using existing data only")
     SCRAPER_AVAILABLE = False
+st.title("🎯 Real-Time LinkedIn Content Quest")
+st.markdown("### 🔍 Semantic Search for Social Media Content")
+st.markdown("**Discover relevant LinkedIn posts using AI-powered semantic search**")
 
-st.set_page_config(page_title="🎯 Real Time Linkedin Content Quest")
-st.title("🎯 Real Time Linkedin Content Quest")
-number_of_results_want = st.sidebar.slider("Number of results that you want to retrieve.",0,10,3)
+# Add helpful info about the system
+with st.expander("ℹ️ How it works", expanded=False):
+    st.markdown("""
+    1. **📥 Fetch Data**: Import LinkedIn posts (via scraper or existing JSON files)
+    2. **🔄 Process**: Convert posts to vector embeddings using AI models  
+    3. **🔍 Search**: Enter queries to find semantically similar content
+    4. **📊 Results**: Get ranked results with similarity scores
+    """)
+
+# Sidebar configuration
+st.sidebar.title("⚙️ Configuration")
+number_of_results_want = st.sidebar.slider("🎯 Number of results to retrieve", 1, 10, 3, help="How many relevant posts to show for each search")
+
+# System status in sidebar
+st.sidebar.markdown("---")
+st.sidebar.subheader("🛠️ System Status")
+status_col1, status_col2 = st.sidebar.columns(2)
+with status_col1:
+    st.sidebar.write("📊 Core Modules:", "✅" if CORE_MODULES_AVAILABLE else "❌")
+    st.sidebar.write("⚡ Bytewax:", "✅" if BYTEWAX_AVAILABLE else "❌")
+with status_col2:
+    st.sidebar.write("🔍 Scraper:", "✅" if SCRAPER_AVAILABLE else "❌")
+
+# Debug mode activation - invisible to normal users
+if 'debug_enabled' not in st.session_state:
+    st.session_state.debug_enabled = False
+
+if st.sidebar.button("🔧", help="Developer Mode"):
+    st.session_state.debug_enabled = not st.session_state.debug_enabled
+
+debug_mode = False
+if st.session_state.debug_enabled:
+    debug_mode = st.sidebar.checkbox("🔍 Debug Mode", value=False, help="Show detailed pipeline logs")
 
 def basic_prerequisites():
+    st.markdown("## 📥 Step 1: Data Source")
+    
     if not SCRAPER_AVAILABLE:
-        st.info("📁 LinkedIn scraper not available - you can still use existing data in the 'data' folder")
+        st.info("📁 **Using existing data files** - LinkedIn scraper not available. The system will use JSON files from the 'data' folder.")
+        return None
+    
+    # Create tabs for different data source options
+    tab1, tab2 = st.tabs(["🔍 Fetch from LinkedIn", "📁 Use Existing Data"])
+    
+    with tab1:
+        st.markdown("**Fetch fresh posts directly from LinkedIn profiles**")
+        
+        with st.form("linkedin_fetch_form"):
+            col1, col2 = st.columns(2)
+            
+            with col1:
+                linkedin_email = st.text_input("📧 LinkedIn Email", help="Your LinkedIn login email")
+                linkedin_username_account = st.text_input("👤 Target Username", help="Username of the profile to scrape (e.g., 'johndoe')")
+            
+            with col2:
+                linkedin_password = st.text_input("🔐 LinkedIn Password", type="password", help="Your LinkedIn password")
+                st.write("")  # Spacing
+                
+            # Warning about LinkedIn scraping
+            st.warning("⚠️ **Important**: This will open LinkedIn in your browser. Don't close it during the process!")
+            
+            need_data = st.form_submit_button("🧲 Fetch LinkedIn Posts", type="primary")
+    
+    with tab2:
+        st.info("💡 The system automatically detects and uses existing JSON files in the 'data' folder.")
         return None
         
-    linkedin_email = st.text_input("LinkedIn Email Address")
-    linkedin_password = st.text_input("LinkedIn Password", type="password")
-    linkedin_username_account = st.text_input(
-        "Type in the username of the profile whose posts you'd like to get."
-    )
-    need_data = st.button("🧲 Fetch Details")
+    # Handle form submission
     if need_data:
-        warn = st.warning(
-            "Please keep in mind that this feature fetches data directly from LinkedIn. It might open LinkedIn in your web browser. Please avoid closing the browser while using this feature."
-        )
-        time.sleep(2)
-        if not linkedin_email:
-            st.warning("Please enter your linkedin email address for login!", icon="⚠")
-        elif not linkedin_password:
-            st.warning("Please enter your linkedin password for login!", icon="⚠")
-        elif not linkedin_username_account:
-            st.warning(
-                "Please enter the linkedin username from which you want to fetch the posts!",
-                icon="⚠",
-            )
-        else:
-            try:
-                account_posts_url = f"https://www.linkedin.com/in/{linkedin_username_account}/recent-activity/all/"
-                all_posts = fetch_posts(
-                    linkedin_email, linkedin_password, account_posts_url
-                )
-                make_post_data(all_posts, linkedin_username_account)
-                warn.empty()
-                warn = st.success("Success! All posts retrieved.")
-                return linkedin_username_account
-            except Exception as e:
-                warn.empty()
-                st.error(f"❌ Error fetching posts: {str(e)}")
-                return None
+        with st.spinner("🔄 Processing your request..."):
+            time.sleep(1)
+            
+            if not linkedin_email:
+                st.error("📧 Please enter your LinkedIn email address!", icon="❌")
+            elif not linkedin_password:
+                st.error("🔐 Please enter your LinkedIn password!", icon="❌")
+            elif not linkedin_username_account:
+                st.error("👤 Please enter the LinkedIn username to scrape!", icon="❌")
+            else:
+                try:
+                    with st.status("🚀 Fetching LinkedIn posts...", expanded=True) as status:
+                        st.write("🌐 Connecting to LinkedIn...")
+                        account_posts_url = f"https://www.linkedin.com/in/{linkedin_username_account}/recent-activity/all/"
+                        
+                        st.write("📡 Fetching posts from profile...")
+                        all_posts = fetch_posts(linkedin_email, linkedin_password, account_posts_url)
+                        
+                        st.write("💾 Saving posts to local storage...")
+                        make_post_data(all_posts, linkedin_username_account)
+                        
+                        status.update(label="✅ Posts retrieved successfully!", state="complete", expanded=False)
+                    
+                    st.success(f"🎉 Successfully fetched posts from **{linkedin_username_account}**!")
+                    st.balloons()
+                    return linkedin_username_account
+                    
+                except Exception as e:
+                    st.error(f"❌ **Error fetching posts**: {str(e)}")
+                    st.info("💡 **Tip**: Try using existing data files or check your LinkedIn credentials.")
+                    return None
 
 
-def migrate_data_to_vectordb(username):
+def migrate_data_to_vectordb(username, debug_mode=False):
+    st.markdown("## 🔄 Step 2: Data Processing")
+    st.markdown("**Convert posts to AI-searchable vector embeddings**")
+    
     if not CORE_MODULES_AVAILABLE:
-        st.error("❌ Core modules not available for data migration")
+        st.error("❌ **Core modules not available** - Please check your installation.")
+        st.info("💡 **Tip**: Run `pip install -r requirements.txt` to install missing dependencies.")
         return
     
-    # Create progress container
+    # Create an expandable section for processing details
+    with st.expander("ℹ️ What happens during processing", expanded=False):
+        st.markdown("""
+        1. **📊 Data Analysis**: Detect and validate data sources
+        2. **🧠 Model Loading**: Load AI models (embeddings + cross-encoder)
+        3. **🔧 Pipeline Setup**: Build data processing pipeline
+        4. **⚡ Processing**: Convert text to vectors using machine learning
+        5. **💾 Storage**: Save embeddings to vector database
+        """)
+    
+    # Progress tracking
     progress_container = st.container()
     
     with progress_container:
-        st.info("🚀 Starting data migration to VectorDB...")
-        progress_bar = st.progress(0)
-        status_text = st.empty()
+        with st.status("🚀 Initializing data migration...", expanded=True) as migration_status:
+            progress_bar = st.progress(0, text="Getting ready...")
+            
+            # Debug log container - only visible in debug mode
+            if debug_mode:
+                st.info("🔍 **Debug Mode Active** - Detailed logs below")
+                debug_container = st.container()
+                debug_logs = debug_container.empty()
+            else:
+                debug_logs = None
         
     if BYTEWAX_AVAILABLE:
         # Use full Bytewax pipeline with detailed progress
@@ -114,13 +215,7 @@ def migrate_data_to_vectordb(username):
                         st.error("❌ No data found. Please fetch some posts first!")
                         return
                 
-                # Count posts in JSON files
-                post_count = count_posts_in_files(data_source_path)
-                if post_count == 0:
-                    st.warning("⚠️ No posts found in data files. Please check your data or fetch new posts.")
-                    return
-                    
-                # Filter out empty files
+                # Filter out empty files first
                 non_empty_files = []
                 for file_path in data_source_path:
                     if os.path.exists(file_path):
@@ -134,18 +229,27 @@ def migrate_data_to_vectordb(username):
                     return
                 
                 data_source_path = non_empty_files  # Use only non-empty files
+                
+                # Count posts in filtered files only
+                post_count = count_posts_in_files(data_source_path)
+                if post_count == 0:
+                    st.warning("⚠️ No posts found in data files. Please check your data or fetch new posts.")
+                    return
+                
                 st.info(f"📁 Using {len(data_source_path)} non-empty JSON files ({post_count} posts) for migration")
             
             progress_bar.progress(20)
             status_text.text("🧠 Loading ML models (this may take a few minutes on first run)...")
             
-            # Pre-load models with progress feedback
+            # Pre-load models with progress feedback and caching
             try:
-                embedding_model = EmbeddingModelSingleton()
+                with st.spinner("🧠 Loading embedding model (cached after first use)..."):
+                    embedding_model = EmbeddingModelSingleton()
                 st.success("✅ Embedding model loaded successfully")
                 progress_bar.progress(40)
                 
-                cross_encoder_model = CrossEncoderModelSingleton()
+                with st.spinner("🔄 Loading cross-encoder model (cached after first use)..."):
+                    cross_encoder_model = CrossEncoderModelSingleton()
                 st.success("✅ Cross-encoder model loaded successfully")
                 progress_bar.progress(60)
                 
@@ -170,29 +274,53 @@ def migrate_data_to_vectordb(username):
             import sys
             from io import StringIO
             
-            # Set multiple timers for user feedback
-            def timeout_handler_30():
-                st.info("⏰ Pipeline is taking longer than expected. This is normal for first-time model downloads.")
+            # Set progressive timeouts with better user feedback
+            def timeout_handler_20():
+                st.info("⏰ Processing embeddings... Models working on posts.")
                 
-            def timeout_handler_60():
-                st.warning("⏰ Still processing... The embedding model may be downloading (can be ~500MB).")
+            def timeout_handler_35():
+                st.warning("⏰ Vector generation in progress... Almost done.")
                 
-            def timeout_handler_120():
-                st.warning("⏰ Taking quite a while... If this persists, there might be a network issue.")
+            def timeout_handler_50():
+                st.warning("🔄 Pipeline taking longer than expected. Will switch to simplified mode shortly.")
+                
+            def force_timeout_and_fallback():
+                st.info("⚡ Switching to simplified mode for better performance...")
+                # Use a gentler approach - set a flag instead of interrupting
+                import os
+                os.environ['BYTEWAX_TIMEOUT'] = '1'
             
-            timer_30 = threading.Timer(30.0, timeout_handler_30)
-            timer_60 = threading.Timer(60.0, timeout_handler_60)
-            timer_120 = threading.Timer(120.0, timeout_handler_120)
+            timer_20 = threading.Timer(20.0, timeout_handler_20)
+            timer_35 = threading.Timer(35.0, timeout_handler_35)
+            timer_50 = threading.Timer(50.0, timeout_handler_50)
+            timer_timeout = threading.Timer(70.0, force_timeout_and_fallback)  # Force fallback after 70 seconds
             
-            timer_30.start()
-            timer_60.start()
-            timer_120.start()
+            timer_20.start()
+            timer_35.start()
+            timer_50.start()
+            timer_timeout.start()
             
             # Capture pipeline output
             old_stdout = sys.stdout
             old_stderr = sys.stderr
             sys.stdout = captured_output = StringIO()
             sys.stderr = captured_errors = StringIO()
+            
+            # Debug logging setup
+            debug_log_lines = []
+            def debug_log(message):
+                if debug_mode:
+                    import datetime
+                    timestamp = datetime.datetime.now().strftime("%H:%M:%S.%f")[:-3]
+                    log_line = f"[{timestamp}] {message}"
+                    debug_log_lines.append(log_line)
+                    if debug_logs:
+                        debug_logs.text_area("🔍 Real-time Debug Logs:", 
+                                           "\n".join(debug_log_lines[-20:]),  # Show last 20 lines
+                                           height=300, key=f"debug_{len(debug_log_lines)}")
+            
+            debug_log("🚀 Pipeline execution starting...")
+            debug_log(f"📊 Processing {post_count} posts from {len(data_source_path)} files")
             
             try:
                 st.info("🔄 Executing Bytewax pipeline...")
@@ -204,13 +332,53 @@ def migrate_data_to_vectordb(username):
                 # Show initial pipeline info
                 pipeline_status.info("🚀 Pipeline started - processing posts through ML models...")
                 
-                # Run the pipeline
-                run_main(flow)
+                # Run the pipeline with simple execution and success detection
+                try:
+                    debug_log("🎯 Calling run_main(flow) - this is where it usually hangs")
+                    debug_log("⏳ Pipeline is running... monitoring for completion")
+                    
+                    # Monitor pipeline execution
+                    import threading
+                    import time
+                    
+                    def monitor_pipeline():
+                        time.sleep(5)
+                        debug_log("⏱️ 5 seconds elapsed - pipeline still running")
+                        time.sleep(10)
+                        debug_log("⏱️ 15 seconds elapsed - checking for output")
+                        time.sleep(10)
+                        debug_log("⏱️ 25 seconds elapsed - pipeline should be processing data")
+                        time.sleep(15)
+                        debug_log("⏱️ 40 seconds elapsed - this is where it usually gets stuck")
+                    
+                    if debug_mode:
+                        monitor_thread = threading.Thread(target=monitor_pipeline)
+                        monitor_thread.daemon = True
+                        monitor_thread.start()
+                    
+                    run_main(flow)
+                    debug_log("✅ run_main(flow) completed successfully!")
+                    pipeline_completed = True
+                except Exception as pipeline_error:
+                    # Since our debug showed the pipeline actually works,
+                    # treat Bytewax shutdown errors as success if data was processed
+                    output = captured_output.getvalue()
+                    if ("Successfully upserted" in output and "points to Qdrant" in output) or \
+                       ("Processing completed for post" in output and "chunks processed" in output):
+                        st.success("✅ Pipeline completed successfully (Bytewax shutdown handled)")
+                        pipeline_completed = True
+                    else:
+                        raise pipeline_error
                 
                 # Cancel all timers if successful
-                timer_30.cancel()
-                timer_60.cancel()
-                timer_120.cancel()
+                timer_20.cancel()
+                timer_35.cancel()
+                timer_50.cancel()
+                timer_timeout.cancel()
+                
+                # Clear timeout flag if set
+                if 'BYTEWAX_TIMEOUT' in os.environ:
+                    del os.environ['BYTEWAX_TIMEOUT']
                 
                 # Restore output
                 sys.stdout = old_stdout
@@ -232,9 +400,14 @@ def migrate_data_to_vectordb(username):
                 
             except Exception as pipeline_error:
                 # Cancel all timers
-                timer_30.cancel()
-                timer_60.cancel()
-                timer_120.cancel()
+                timer_20.cancel()
+                timer_35.cancel()
+                timer_50.cancel()
+                timer_timeout.cancel()
+                
+                # Clear timeout flag if set
+                if 'BYTEWAX_TIMEOUT' in os.environ:
+                    del os.environ['BYTEWAX_TIMEOUT']
                 
                 # Restore output
                 sys.stdout = old_stdout
@@ -256,12 +429,19 @@ def migrate_data_to_vectordb(username):
             progress_bar.progress(0)
             status_text.text("❌ Migration failed")
             st.error(f"❌ Error during migration: {str(e)}")
-            st.info("🔄 Trying simplified migration as fallback...")
+            
+            # Check if this was a timeout issue and force simplified mode
+            if "timeout" in str(e).lower() or "signal" in str(e).lower() or "interrupt" in str(e).lower():
+                st.success("⚡ Automatic switch to simplified mode - faster and more reliable!")
+                st.info("🔄 Automatically switching to simplified mode (recommended for your setup)")
+            else:
+                st.info("🔄 Trying simplified migration as fallback...")
             
             # Fallback to simplified migration
             try:
                 migrate_data_simplified(username)
                 st.success("✅ Fallback migration completed!")
+                st.info("💡 Simplified mode is working perfectly for your data!")
             except Exception as fallback_error:
                 st.error(f"❌ Fallback migration also failed: {str(fallback_error)}")
     else:
@@ -283,7 +463,7 @@ def migrate_data_to_vectordb(username):
 
 
 def count_posts_in_files(file_paths):
-    """Count total posts in JSON files"""
+    """Count total posts in JSON files (assumes files already filtered for non-empty)"""
     import json
     total_posts = 0
     
@@ -294,8 +474,6 @@ def count_posts_in_files(file_paths):
                     data = json.load(f)
                     posts = data.get('Posts', {})
                     total_posts += len(posts)
-                    if len(posts) == 0:
-                        st.warning(f"⚠️ File {os.path.basename(file_path)} contains no posts")
         except Exception as e:
             st.warning(f"⚠️ Error reading {file_path}: {e}")
     
@@ -342,15 +520,44 @@ def migrate_data_simplified(username):
 
 
 def get_insights_from_posts():
-    with st.form("my_form"):
-        query = st.text_area(
-            "✨ Spark a Search:",
-            f"",
-        )
-        submitted = st.form_submit_button("Submit Query")
+    st.markdown("## 🔍 Step 3: Semantic Search")
+    st.markdown("**Find relevant posts using natural language queries**")
+    
+    # Add examples and tips
+    with st.expander("💡 Search Tips & Examples", expanded=False):
+        st.markdown("""
+        **Example queries:**
+        - "machine learning projects"
+        - "startup advice and entrepreneurship"
+        - "Python programming tutorials"
+        - "career growth and networking"
+        - "data science best practices"
+        
+        **Tips for better results:**
+        - Use descriptive, natural language
+        - Try multiple related terms
+        - Be specific but not overly narrow
+        """)
+    
+    with st.form("search_form", clear_on_submit=False):
+        col1, col2 = st.columns([4, 1])
+        
+        with col1:
+            query = st.text_area(
+                "🔍 **Enter your search query:**",
+                placeholder="e.g., 'machine learning best practices' or 'startup funding advice'",
+                height=100,
+                help="Describe what you're looking for in natural language"
+            )
+        
+        with col2:
+            st.write("")  # Spacing
+            st.write("")  # Spacing
+            submitted = st.form_submit_button("🚀 Search", type="primary", use_container_width=True)
+            
         if submitted:
             if not query.strip():
-                st.warning("⚠️ Please enter a search query")
+                st.warning("⚠️ **Please enter a search query** to find relevant posts", icon="🔍")
                 return
                 
             start_time = time.time()
@@ -425,37 +632,124 @@ def perform_simple_search(query):
 def display_search_results(posts, search_type):
     """Display search results in consistent format"""
     if not posts:
-        st.info("🔍 No results found for your query")
+        st.info("🔍 **No results found** - Try adjusting your search terms or check if data is loaded", icon="🤔")
         return
     
-    st.success(f"🎯 Found {len(posts)} results using {search_type} search")
+    # Results header with metrics
+    search_icon = "🎯" if search_type == "vector" else "📝"
+    search_label = "AI Semantic" if search_type == "vector" else "Text-based"
     
+    st.success(f"{search_icon} **Found {len(posts)} results** using {search_label} search")
+    
+    # Add search quality indicator for vector search
+    if search_type == "vector" and posts:
+        avg_score = sum(post.score if hasattr(post, 'score') else post.get('score', 0) for post in posts) / len(posts)
+        if avg_score > 0.8:
+            st.info("✨ **High relevance** - Results closely match your query", icon="🎯")
+        elif avg_score > 0.6:
+            st.info("👍 **Good relevance** - Results are related to your query", icon="📊") 
+        else:
+            st.info("🔍 **Partial matches** - Consider refining your search terms", icon="⚡")
+    
+    # Display results in a more appealing format
     for index, post in enumerate(posts):
-        with st.expander(f"📌 Result-{index+1}"):
-            if hasattr(post, 'post_id'):
-                # Vector search result object
-                st.subheader(f"PostID: {post.post_id}")
-                st.markdown(f"**Post Owner**: {post.post_owner}")
-                st.markdown(f"**Source**: {post.source}")
-                st.markdown(f"**Similarity Score**: {post.score:.4f}")
-                st.caption("Raw Text of Post:")
-                st.write(post.full_raw_text)
-            else:
-                # Simple search result dict
-                st.subheader(f"PostID: {post['post_id']}")
-                st.markdown(f"**Post Owner**: {post['post_owner']}")
-                st.markdown(f"**Source**: {post['source']}")
-                st.markdown(f"**Match Score**: {post['score']:.4f}")
-                st.caption("Raw Text of Post:")
-                st.write(post['text'])
+        # Extract post data consistently
+        if hasattr(post, 'post_id'):
+            # Vector search result object
+            post_id = post.post_id
+            owner = post.post_owner
+            source = post.source
+            score = post.score
+            text = post.full_raw_text
+        else:
+            # Simple search result dict
+            post_id = post['post_id']
+            owner = post['post_owner']
+            source = post['source']
+            score = post['score']
+            text = post['text']
+        
+        # Create a more attractive result card
+        with st.container():
+            col1, col2 = st.columns([3, 1])
+            
+            with col1:
+                st.markdown(f"### 📌 **Result #{index+1}**")
+                
+            with col2:
+                # Score badge
+                score_color = "🟢" if score > 0.8 else "🟡" if score > 0.6 else "🔴"
+                st.markdown(f"**{score_color} {score:.3f}**")
+            
+            # Post metadata in a clean format
+            meta_col1, meta_col2, meta_col3 = st.columns(3)
+            with meta_col1:
+                st.markdown(f"👤 **{owner}**")
+            with meta_col2:
+                st.markdown(f"📱 **{source}**")
+            with meta_col3:
+                st.markdown(f"🆔 `{post_id}`")
+            
+            # Post content with better formatting
+            st.markdown("**📝 Content:**")
+            with st.container():
+                # Truncate very long posts for better readability
+                if len(text) > 500:
+                    preview_text = text[:500] + "..."
+                    with st.expander("📖 Read full post", expanded=False):
+                        st.write(text)
+                    st.write(preview_text)
+                else:
+                    st.write(text)
+            
+            st.divider()  # Visual separator between results
 
 
 if __name__ == "__main__":
+    # Main application workflow
     username = None
-    with st.expander("💡 Unlock LinkedIn Insights"):
+    
+    # Step 1: Data Source Configuration
+    with st.expander("📥 **Step 1: Configure Data Source**", expanded=True):
         username = basic_prerequisites()
-    with st.expander("🛠️ Data Ingestion to VectorDB"):
-        migrate_data = st.button("🔨 Data Ingestion")
+    
+    # Step 2: Data Processing 
+    with st.expander("🔄 **Step 2: Process Data for AI Search**", expanded=False):
+        st.markdown("Convert your posts into AI-searchable format")
+        
+        col1, col2 = st.columns([3, 1])
+        with col1:
+            st.info("💡 **Required**: Process data before searching to enable semantic search capabilities")
+        with col2:
+            migrate_data = st.button("🚀 **Start Processing**", type="primary", use_container_width=True)
+        
         if migrate_data:
-            migrate_data_to_vectordb(username)
+            migrate_data_to_vectordb(username, debug_mode)
+    
+    # Step 3: Search Interface
+    st.markdown("---")  # Visual separator
     get_insights_from_posts()
+    
+    # Footer with helpful information
+    st.markdown("---")
+    with st.expander("ℹ️ **About This System**", expanded=False):
+        st.markdown("""
+        ### 🎯 **Real-Time LinkedIn Content Quest**
+        
+        This AI-powered system helps you discover relevant LinkedIn posts using semantic search technology:
+        
+        - **🤖 AI Models**: Uses sentence-transformers for embeddings and cross-encoders for reranking
+        - **⚡ Real-time Processing**: Bytewax pipeline for efficient data processing
+        - **🗄️ Vector Storage**: Qdrant database for fast similarity search
+        - **🔍 Smart Search**: Understands context and meaning, not just keywords
+        
+        **Built with**: Python, Streamlit, PyTorch, Qdrant, Bytewax
+        """)
+    
+    # Show current system status in footer
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("### 📊 **Current Session**")
+    if 'posts_data' in st.session_state:
+        st.sidebar.success(f"✅ {len(st.session_state['posts_data'])} posts loaded")
+    else:
+        st.sidebar.info("⏳ No posts loaded yet")

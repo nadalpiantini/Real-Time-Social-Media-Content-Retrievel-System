@@ -1,0 +1,47 @@
+
+  You can now view your Streamlit app in your browser.
+
+  Local URL: http://localhost:8502
+  Network URL: http://10.0.0.91:8502
+
+  For better performance, install the Watchdog module:
+
+  $ xcode-select --install
+  $ pip install watchdog
+            
+Supabase credentials not found, using local JSON files
+2025-08-02 07:31:29.488 Examining the path of torch.classes raised: Tried to instantiate class '__path__._path', but it does not exist! Ensure that it is registered via torch::class_
+2025-08-02 07:33:41.255 Examining the path of torch.classes raised: Tried to instantiate class '__path__._path', but it does not exist! Ensure that it is registered via torch::class_
+2025-08-02 07:45:55.501 Examining the path of torch.classes raised: Tried to instantiate class '__path__._path', but it does not exist! Ensure that it is registered via torch::class_
+2025-08-02 08:02:44.346 Examining the path of torch.classes raised: Tried to instantiate class '__path__._path', but it does not exist! Ensure that it is registered via torch::class_
+2025-08-02 19:56:06.173 Examining the path of torch.classes raised: Tried to instantiate class '__path__._path', but it does not exist! Ensure that it is registered via torch::class_
+2025-08-02 23:35:57.823 Examining the path of torch.classes raised: Tried to instantiate class '__path__._path', but it does not exist! Ensure that it is registered via torch::class_
+2025-08-03 08:26:32.068 Examining the path of torch.classes raised: Tried to instantiate class '__path__._path', but it does not exist! Ensure that it is registered via torch::class_
+2025-08-03 09:52:44.193 Examining the path of torch.classes raised: Tried to instantiate class '__path__._path', but it does not exist! Ensure that it is registered via torch::class_
+2025-08-03 12:01:54.750 Examining the path of torch.classes raised: Tried to instantiate class '__path__._path', but it does not exist! Ensure that it is registered via torch::class_
+2025-08-03 12:12:40.239 Examining the path of torch.classes raised: Tried to instantiate class '__path__._path', but it does not exist! Ensure that it is registered via torch::class_
+2025-08-03 13:16:03.780 Examining the path of torch.classes raised: Tried to instantiate class '__path__._path', but it does not exist! Ensure that it is registered via torch::class_
+2025-08-03 13:16:06.843 Examining the path of torch.classes raised: Tried to instantiate class '__path__._path', but it does not exist! Ensure that it is registered via torch::class_
+2025-08-03 14:20:52.061 Examining the path of torch.classes raised: Tried to instantiate class '__path__._path', but it does not exist! Ensure that it is registered via torch::class_
+2025-08-03 14:21:19.390 Thread 'Thread-1': missing ScriptRunContext
+2025-08-03 14:21:19.393 Thread 'Thread-1': missing ScriptRunContext
+2025-08-03 14:21:34.390 Thread 'Thread-2': missing ScriptRunContext
+2025-08-03 14:21:34.391 Thread 'Thread-2': missing ScriptRunContext
+2025-08-03 14:21:49.387 Thread 'Thread-3': missing ScriptRunContext
+2025-08-03 14:21:49.388 Thread 'Thread-3': missing ScriptRunContext
+2025-08-03 14:22:09.390 Thread 'Thread-4': missing ScriptRunContext
+2025-08-03 14:22:09.391 Thread 'Thread-4': missing ScriptRunContext
+2025-08-03 15:04:16.504 Examining the path of torch.classes raised: Tried to instantiate class '__path__._path', but it does not exist! Ensure that it is registered via torch::class_
+2025-08-03 19:34:31.940 Examining the path of torch.classes raised: Tried to instantiate class '__path__._path', but it does not exist! Ensure that it is registered via torch::class_
+2025-08-03 19:34:55.014 Thread 'Thread-6': missing ScriptRunContext
+2025-08-03 19:34:55.014 Thread 'Thread-6': missing ScriptRunContext
+2025-08-03 19:35:10.019 Thread 'Thread-7': missing ScriptRunContext
+2025-08-03 19:35:10.020 Thread 'Thread-7': missing ScriptRunContext
+2025-08-03 19:35:25.019 Thread 'Thread-8': missing ScriptRunContext
+2025-08-03 19:35:25.020 Thread 'Thread-8': missing ScriptRunContext
+2025-08-03 19:35:45.014 Thread 'Thread-9': missing ScriptRunContext
+2025-08-03 19:35:45.014 Thread 'Thread-9': missing ScriptRunContext
+2025-08-04 09:25:55.351 Examining the path of torch.classes raised: Tried to instantiate class '__path__._path', but it does not exist! Ensure that it is registered via torch::class_
+2025-08-04 09:25:55.666 Examining the path of torch.classes raised: Tried to instantiate class '__path__._path', but it does not exist! Ensure that it is registered via torch::class_
+2025-08-04 09:25:55.896 Examining the path of torch.classes raised: Tried to instantiate class '__path__._path', but it does not exist! Ensure that it is registered via torch::class_
+2025-08-04 09:25:56.093 Examining the path of torch.classes raised: Tried to instantiate class '__path__._path', but it does not exist! Ensure that it is registered via torch::class_

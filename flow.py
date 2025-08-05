@@ -56,13 +56,21 @@ def build(in_memory: bool = False, data_source_path: List[str]=None):
     )
     stream = op.map("log_embedded", stream, lambda x: log_step("Embedded Post", x))
     
-    # Enhanced inspect with more details
+    # Enhanced inspect with more details and completion tracking
     def detailed_inspect(step_id, data):
         message = f"🔍 Final: Post {data.post_id} → {len(data.text)} chars → {len(data.text_embedding)} dims"
         print(message)
         return data
     
     op.inspect("inspect", stream, detailed_inspect)
+    
+    # Add a completion marker to help detect when processing is done
+    def mark_completion(data):
+        print(f"🏁 Processing completed for post {data.post_id}")
+        return data
+    
+    stream = op.map("completion_marker", stream, mark_completion)
+    
     op.output(
         "output", stream, _build_output(model=embedding_model, in_memory=in_memory)
     )

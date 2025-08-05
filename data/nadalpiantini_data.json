@@ -1,4 +1,45 @@
 {
   "Name": "nadalpiantini",
-  "Posts": {}
+  "Posts": {
+    "Post_1": {
+      "text": "🚀 Excited to share my latest project: Real-Time Social Media Content Retrieval System! Built with Python, Streamlit, and vector embeddings for semantic search across LinkedIn posts. The system uses Bytewax for data processing, Qdrant for vector storage, and sentence-transformers for embeddings. Perfect for content creators and researchers who need to find relevant posts quickly! #AI #MachineLearning #Python #SocialMedia #SemanticSearch",
+      "name": "nadalpiantini",
+      "source": "Linkedin"
+    },
+    "Post_2": {
+      "text": "Deep diving into vector databases and their applications in content retrieval. Qdrant has been impressive for handling semantic similarity searches at scale. The combination of proper text chunking and cross-encoder reranking really improves search quality. Building systems that understand context, not just keywords! #VectorDB #AI #Search #Technology",
+      "name": "nadalpiantini", 
+      "source": "Linkedin"
+    },
+    "Post_3": {
+      "text": "Working on improving data processing pipelines with Bytewax. The ability to handle real-time streaming data while maintaining exactly-once processing guarantees is game-changing. Especially useful for social media content where data velocity is high. Python ecosystem keeps delivering! #DataEngineering #StreamProcessing #Python #RealTime",
+      "name": "nadalpiantini",
+      "source": "Linkedin"
+    },
+    "Post_4": {
+      "text": "Streamlit continues to amaze me for rapid prototyping and deployment of ML applications. From local development to cloud deployment in minutes. The ability to create interactive dashboards that non-technical stakeholders can use is invaluable. UI/UX that just works! #Streamlit #MLOps #Python #DataScience",
+      "name": "nadalpiantini",
+      "source": "Linkedin"
+    },
+    "Post_5": {
+      "text": "Docker and containerization have revolutionized how we deploy applications. Setting up complex multi-service architectures becomes trivial with proper container orchestration. Vector databases, web apps, and data pipelines all working in harmony. Infrastructure as code at its finest! #Docker #DevOps #Containerization #Infrastructure",
+      "name": "nadalpiantini",
+      "source": "Linkedin"
+    },
+    "Post_6": {
+      "text": "Exploring the latest in embedding models and their performance characteristics. sentence-transformers library keeps improving with new models optimized for different use cases. The balance between model size, inference speed, and accuracy is fascinating. Context is everything in semantic search! #NLP #Embeddings #AI #Performance",
+      "name": "nadalpiantini",
+      "source": "Linkedin"
+    },
+    "Post_7": {
+      "text": "Building robust error handling and fallback mechanisms in production systems. When external services fail, your application should gracefully degrade rather than crash. In-memory fallbacks, circuit breakers, and proper logging make all the difference. Resilience by design! #SoftwareEngineering #Reliability #Architecture #BestPractices",
+      "name": "nadalpiantini",
+      "source": "Linkedin"
+    },
+    "Post_8": {
+      "text": "The importance of proper debugging and logging in complex systems cannot be overstated. From PyTorch warnings to threading issues, every log tells a story. Good observability leads to faster problem resolution and better user experience. Debug early, debug often! #Debugging #Logging #SoftwareEngineering #Troubleshooting",
+      "name": "nadalpiantini",
+      "source": "Linkedin"
+    }
+  }
 }
