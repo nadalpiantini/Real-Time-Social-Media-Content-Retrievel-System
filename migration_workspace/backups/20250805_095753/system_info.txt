@@ -1,0 +1,1 @@
+/Users/nadalpiantini/Documents/Github/Real-Time-Social-Media-Content-Retrieval-System/scripts/create_migration_backup.sh: line 86: python: command not found

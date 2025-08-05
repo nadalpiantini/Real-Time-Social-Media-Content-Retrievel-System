@@ -1,0 +1,14 @@
+{
+  "timestamp": 1754402366.866729,
+  "python_version": "3.11.3 (v3.11.3:f3909b8bc8, Apr  4 2023, 20:12:10) [Clang 13.0.0 (clang-1300.0.29.30)]",
+  "files": {
+    "data_files": 2,
+    "source_files": 6,
+    "config_files": 1
+  },
+  "git": {
+    "branch": "architecture-improvements",
+    "commit": "16681440",
+    "tag": "v-stable-pre-migration"
+  }
+}

@@ -1,0 +1,8 @@
+1668144 Pre-migration commit: Save current state before architecture improvements
+d6a2c06 docs: Add comprehensive debugging guide and fix requirements
+ebf6089 feat: Implement comprehensive debugging system for data ingestion pipeline
+97585f2 Create Streamlit Cloud compatible version
+b271fdc Fix Streamlit Cloud compatibility
+6408a6f Update readme
+e1e0796 Add demo image and update readme
+8985144 Add Initial Commit

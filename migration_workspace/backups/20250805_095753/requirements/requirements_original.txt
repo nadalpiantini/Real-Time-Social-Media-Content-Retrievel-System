@@ -1,0 +1,43 @@
+# Streamlit Cloud Minimal Requirements
+# Core dependencies only - no heavy compilation required
+
+# Web Framework
+streamlit>=1.47.0
+
+# ML Models (lightweight)
+sentence-transformers>=2.7.0
+torch>=2.3.0
+
+# Vector Database
+qdrant-client>=1.9.0
+
+# Data Processing Pipeline
+bytewax
+pandas>=2.2.0
+numpy>=1.26.0
+protobuf<4,>=3.12  # Required for Bytewax compatibility and PyTorch warnings fix
+
+# Web Scraping
+beautifulsoup4>=4.12.0
+selenium>=4.20.0
+
+# Configuration
+python-dotenv>=1.0.0
+pydantic-settings>=2.2.0
+
+# Database (optional)
+supabase>=2.4.0
+
+# Visualization (minimal)
+matplotlib>=3.8.0
+
+# Text Processing
+langchain>=0.1.0
+langchain-text-splitters>=0.0.1
+unstructured>=0.13.0
+
+# Web requests
+requests>=2.31.0
+
+# Performance optimizations
+watchdog>=3.0.0  # Recommended by Streamlit for better performance

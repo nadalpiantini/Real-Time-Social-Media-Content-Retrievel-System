@@ -27,3 +27,18 @@ class AppSettings(BaseSettings):
     DATA_FOLDER: str = "data"
 
 settings = AppSettings()
+
+class SettingsWrapper:
+    """Wrapper para compatibilidad con tests que buscan EMBEDDING_MODEL_NAME"""
+    def __init__(self, settings_obj):
+        self._settings = settings_obj
+    
+    def __getattr__(self, name):
+        if name == 'EMBEDDING_MODEL_NAME':
+            return self._settings.EMBEDDING_MODEL_ID
+        return getattr(self._settings, name)
+
+# Función de compatibilidad para tests
+def get_settings():
+    """Obtener instancia de configuración legacy"""
+    return SettingsWrapper(settings)
