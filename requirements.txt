@@ -41,3 +41,10 @@ requests>=2.31.0
 
 # Performance optimizations
 watchdog>=3.0.0  # Recommended by Streamlit for better performance
+
+# Analytics Dependencies (Phase 3A)
+scikit-learn>=1.3.0  # For clustering and ML algorithms
+plotly>=5.17.0  # For interactive visualizations
+umap-learn>=0.5.4  # For dimensionality reduction (clustering visualization)
+scipy>=1.11.0  # For statistical operations and distance calculations
+psutil>=5.9.0  # For system performance monitoring

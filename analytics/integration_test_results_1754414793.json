@@ -1,0 +1,169 @@
+{
+  "test_timestamp": 1754414793.2229881,
+  "test_session_id": "40ca9d80-3106-418b-98a1-dced3805a954",
+  "phase": "3A_Analytics_Integration",
+  "total_tests": 7,
+  "successful_tests": 7,
+  "failed_tests": 0,
+  "total_duration_ms": 5892.016649246216,
+  "test_results": [
+    {
+      "test_name": "metrics_collection",
+      "success": true,
+      "duration_ms": 0.10991096496582031,
+      "details": {
+        "metric_id": "89f47a649a99",
+        "search_analytics": {
+          "total_searches": 1,
+          "avg_response_time_ms": 150.0,
+          "avg_results_per_search": 5.0,
+          "top_queries": [
+            [
+              "test query",
+              1
+            ]
+          ],
+          "top_authors": [
+            [
+              "alice_ml",
+              1
+            ],
+            [
+              "eve_python",
+              1
+            ],
+            [
+              "diana_data",
+              1
+            ],
+            [
+              "bob_startup",
+              1
+            ],
+            [
+              "charlie_career",
+              1
+            ]
+          ],
+          "source_distribution": {
+            "newsletter": 1,
+            "blog": 1,
+            "twitter": 1,
+            "linkedin": 1
+          },
+          "hourly_distribution": {
+            "13:00": 1
+          },
+          "active_sessions": 1,
+          "time_period_hours": 1
+        },
+        "content_count": 20,
+        "system_memory": 1024.0
+      },
+      "error_message": ""
+    },
+    {
+      "test_name": "semantic_clustering",
+      "success": true,
+      "duration_ms": 836.5812301635742,
+      "details": {
+        "clustering_success": true,
+        "topic_modeling_success": true,
+        "n_clusters": 3,
+        "n_topics": 4
+      },
+      "error_message": ""
+    },
+    {
+      "test_name": "enhanced_retriever",
+      "success": true,
+      "duration_ms": 4768.45908164978,
+      "details": {
+        "search_successful": false,
+        "result_count": 0,
+        "filter_search_successful": false,
+        "suggestions_count": 1,
+        "trending_count": 5,
+        "has_analytics": true
+      },
+      "error_message": ""
+    },
+    {
+      "test_name": "search_filters",
+      "success": true,
+      "duration_ms": 0.07700920104980469,
+      "details": {
+        "test_filters": {
+          "keywords": [
+            "machine",
+            "learning"
+          ],
+          "authors": [
+            "test_author"
+          ],
+          "min_score": 0.7,
+          "min_text_length": 100
+        },
+        "suggestions_keys": [
+          "popular_keywords",
+          "trending_authors",
+          "active_sources"
+        ],
+        "summary_length": 92,
+        "enhanced_query": "original query machine learning"
+      },
+      "error_message": ""
+    },
+    {
+      "test_name": "recommendation_engine",
+      "success": true,
+      "duration_ms": 0.2732276916503906,
+      "details": {
+        "user_id": "40ca9d80-3106-418b-98a1-dced3805a954",
+        "search_history_count": 6,
+        "recommendations_count": 5,
+        "diversified_count": 5,
+        "profile_strength": 0.4083333333333333
+      },
+      "error_message": ""
+    },
+    {
+      "test_name": "analytics_dashboard",
+      "success": true,
+      "duration_ms": 0.18405914306640625,
+      "details": {
+        "health_score": 85.0,
+        "analytics_keys": [
+          "total_searches",
+          "avg_response_time_ms",
+          "avg_results_per_search",
+          "top_queries",
+          "top_authors",
+          "source_distribution",
+          "hourly_distribution",
+          "active_sessions",
+          "time_period_hours"
+        ],
+        "dashboard_initialized": true
+      },
+      "error_message": ""
+    },
+    {
+      "test_name": "integration_workflows",
+      "success": true,
+      "duration_ms": 286.3321304321289,
+      "details": {
+        "search_recorded": true,
+        "recommendations_generated": 3,
+        "clustering_successful": true,
+        "analytics_complete": true
+      },
+      "error_message": ""
+    }
+  ],
+  "environment_info": {
+    "analytics_available": true,
+    "core_modules_available": true,
+    "test_data_count": 20
+  }
+}
